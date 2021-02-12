@@ -44,13 +44,13 @@ def twos_complement(decimal, bits=32):
         inverted = 2**bits + decimal
         return twos_complement(inverted, bits)
 
-def generate_init_data(size, signed_output = True):
+def generate_init_data(size, input_list, signed_output = True):
     assert ~(size==16 | size==32)
     init_data = {}
     for line in range(0, 4*size):  # 64 for 18k BRAM
         init_line = 0
         for word in range(0, 8):    # each verilog parameter contains 8 32 bit words
-            decimal = 10            # replace this with an actual function
+            decimal = input_list[(line*8 + word)]
             if signed_output:
                 decimal = twos_complement(decimal, 32)  # BRAM has a native width of 32
             init_line += (decimal << word*32)
