@@ -140,6 +140,9 @@ class AC97_Controller(Elaboratable):
 
         # AC97 interface
         command_select = Signal(2)
+        write_address = Signal(20)
+        address_echo = Signal(20)
+        m.d.comb += self.addr_echo.eq( ~((write_address ^ address_echo).any()) )
         with m.FSM(domain="audio_bit_clk") as ac97_if:
             with m.State("IO_CTRL"):
                 m.d.audio_bit_clk += adc_outputs_valid.eq(1)
@@ -167,13 +170,25 @@ class AC97_Controller(Elaboratable):
                     #send a command. for the basics it will loop through master volume, line out, headphones
                     with m.Switch(command_select):
                         with m.Case(0):
-                            m.d.audio_bit_clk += shift_out.eq( Cat(Const(0x02000, 19), self.reg_read))  #master volume
+                            m.d.audio_bit_clk += [
+                                shift_out.eq( Cat(Const(0x02000, 19), self.reg_read)),  #master volume
+                                write_address.eq(Cat(Const(0x02000, 19), self.reg_read)),
+                            ]
                         with m.Case(1):
-                            m.d.audio_bit_clk += shift_out.eq( Cat(Const(0x04000, 19), self.reg_read))  #headphones volume
+                            m.d.audio_bit_clk += [
+                                shift_out.eq( Cat(Const(0x04000, 19), self.reg_read)),  #headphones volume
+                                write_address.eq(Cat(Const(0x04000, 19), self.reg_read)),
+                            ]
                         with m.Case(2):
-                            m.d.audio_bit_clk += shift_out.eq( Cat(Const(0x18000, 19), self.reg_read))  #line out volume
+                            m.d.audio_bit_clk += [
+                                shift_out.eq( Cat(Const(0x18000, 19), self.reg_read)),  #line out volume
+                                write_address.eq(Cat(Const(0x18000, 19), self.reg_read)),
+                            ]
                         with m.Case(3):
-                            m.d.audio_bit_clk += shift_out.eq( Cat(Const(0x0e000, 19), self.reg_read)) #mic in volume
+                            m.d.audio_bit_clk += [
+                                shift_out.eq( Cat(Const(0x0e000, 19), self.reg_read)), #mic in volume
+                                write_address.eq(Cat(Const(0x0e000, 19), self.reg_read)),
+                            ]
                     m.next = "CMD_ADDR"
             with m.State("CMD_ADDR"):
                 with m.If(dac_valid_ack & ~dac_inputs_valid_sync):

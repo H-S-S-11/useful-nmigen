@@ -8,6 +8,8 @@ class AC97_write_read(Elaboratable):
         m = Module()
 
         m.d.submodules.ac97 = ac97 = AC97_Controller()
+        self.led = platform.request('led')
+        m.d.comb += self.led.o.eq(ac97.addr_echo)
 
         return m
 
