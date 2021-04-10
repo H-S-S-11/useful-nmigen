@@ -17,13 +17,17 @@ class ML505LunaClockDomains(Elaboratable):
 
         clk100 = platform.request("clk100")
 
-        # Instantiate USB Full-speed PLL and required BUFGs
+        # Add clocks and constraints
         clk12       = Signal()
         clk48       = Signal()
         clk12_buf   = Signal()
         clk48_buf   = Signal()
         usb2_lock   = Signal()
         usb2_fb     = Signal()
+        platform.add_clock_constraint(clk12, 12e6)
+        platform.add_clock_constraint(clk48, 48e6)
+
+        # Instantiate USB Full-speed PLL and required BUFGs
         m.submodules.usb_pll = Instance("PLL_ADV",
             p_BANDWIDTH             = "OPTIMIZED",
             p_COMPENSATION          = "SYSTEM_SYNCHRONOUS",
@@ -38,6 +42,7 @@ class ML505LunaClockDomains(Elaboratable):
             p_CLKIN1_PERIOD         = 10.000,
             i_CLKINSEL              = Const(1),
             i_CLKFBIN               = usb2_fb,
+            i_RST                   = Const(0),
             o_CLKFBOUT              = usb2_fb,
             i_CLKIN1                = clk100,
             o_CLKOUT0               = clk12,
@@ -55,6 +60,7 @@ class ML505LunaClockDomains(Elaboratable):
 
         # Connect clocks to domains
         m.d.comb += [
+            ClockSignal("sync")     .eq(clk100),
             ClockSignal("usb")      .eq(clk12_buf),
             ClockSignal("usb_io")   .eq(clk48_buf),
             ResetSignal("usb")      .eq(~usb2_lock),

@@ -18,7 +18,7 @@ class USBSerialLoopback(Elaboratable):
 
         # Create clocks
         m.submodules.clocks = ML505LunaClockDomains()
-
+        
         # Add USB connector
         platform.add_resources([
             Resource("usb_gpio", 0,
@@ -43,8 +43,18 @@ class USBSerialLoopback(Elaboratable):
             usb_serial.rx.ready    .eq(usb_serial.tx.ready),
 
             # ... and always connect by default.
-            usb_serial.connect     .eq(1)
+            usb_serial.connect     .eq(Const(1))
         ]
+        
+        led = platform.request("led")
+        timer = Signal(range(int(12e6//2)), reset_less=True)
+        flop = Signal(reset_less=True)
+        m.d.comb += led.o.eq(flop)
+        with m.If(timer == 0):
+            m.d.usb += timer.eq(int( (12e6) //2) - 1)
+            m.d.usb += flop.eq(~flop)
+        with m.Else():
+            m.d.usb += timer.eq(timer - 1)
 
         return m
 
