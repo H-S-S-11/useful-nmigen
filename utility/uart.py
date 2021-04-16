@@ -47,10 +47,21 @@ if __name__=="__main__":
         while True:
             yield
 
+    def tx_byte(byte):
+        bits = bin(byte)[2:]
+        while len(bits) < 8:
+            bits = "0" + bits
+        for n in range(0, 8):
+            yield u.rx.eq(int(bits[n]))
+            yield Delay(interval=8.68e-6)
+        yield u.rx.eq(1)    # Stop bit
+        yield Delay(interval=8.68e-6)
+
+    import random
     def tb():
         yield u.rx.eq(1)
-        yield Delay(interval=8.68e-6)
-        yield u.rx.eq(0)
+        yield Delay(interval=(random.randrange(8000, 10000)/1e9))
+        yield from tx_byte(0x56)
 
     sim.add_sync_process(clock)
     sim.add_process(tb)
