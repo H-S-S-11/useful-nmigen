@@ -2,8 +2,8 @@ from nmigen import *
 from nmigen.sim import *
 from nmigen.lib.cdc import *
 
-# A UART TX and RX using 5x oversampling
-class UART(Elaboratable):
+# A UART RX using oversampling
+class UART_RX(Elaboratable):
     def __init__(self, baud_rate=9600, fclk=None):
         self.rx = Signal()
         self.tx = Signal()
@@ -11,7 +11,7 @@ class UART(Elaboratable):
         if(fclk==None):
             raise ValueError("Please specify fclk")
         else:
-            self.divider = int((fclk/baud_rate)/5)
+            self.divider = int((fclk/baud_rate)/6)
                 
     def elaborate(self, platform):
         m = Module()
@@ -21,25 +21,51 @@ class UART(Elaboratable):
 
         # Generate the sampling strobe 5 times per bit        
         baud_divide = Signal(range(self.divider))
-        oversample_counter = Signal(range(4))
+        oversample_counter = Signal(3)
         sample_strobe = Signal()
+        bit_count = Signal(4)
         m.d.sync += [
             sample_strobe.eq(0),
             baud_divide.eq(baud_divide+1),
         ]
         with m.If(baud_divide==self.divider):
             m.d.sync += [
-                sample_strobe.eq(1),
                 oversample_counter.eq(oversample_counter+1),
                 baud_divide.eq(0),
             ]
+            with m.If(oversample_counter==5):
+                m.d.sync += oversample_counter.eq(0)
+            with m.If(~oversample_counter[2] & oversample_counter[0:2].any() & bit_count.any()):
+                m.d.sync += sample_strobe.eq(1)
+            
+        # Detect start bits and changes
+        rx_sync_prev = Signal()
+        m.d.sync += rx_sync_prev.eq(rx_sync)
+        with m.If(rx_sync_prev ^ rx_sync):
+            m.d.sync += [
+                baud_divide.eq(0),
+                oversample_counter.eq(0),
+            ]
+            # Detect start bits
+            with m.If(~bit_count.any() & ~rx_sync):
+                m.d.sync += bit_count.eq(1)
+
+        # Counting bits
+        with m.If(bit_count.any() & (oversample_counter == 4) & sample_strobe):
+            m.d.sync += bit_count.eq(bit_count+1)
+            with m.If(bit_count==9):
+                m.d.sync += bit_count.eq(0)                
+        
+        
+        # Input right shift reg
+        
         
         m.d.comb += self.tx.eq(rx_sync)
 
         return m
 
 if __name__=="__main__":
-    u = UART(baud_rate=115200, fclk=50e6)   # 0.00000868055 s/bit
+    u = UART_RX(baud_rate=115200, fclk=50e6)   # 0.00000868055 s/bit
     sim = Simulator(u)
     sim.add_clock(20e-9)
 
