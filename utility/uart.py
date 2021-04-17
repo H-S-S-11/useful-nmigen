@@ -96,9 +96,9 @@ if __name__=="__main__":
             bits = "0" + bits
         for n in range(0, 8):
             yield u.rx.eq(int(bits[n]))
-            yield Delay(interval=8.68e-6)
+            yield Delay(interval=(random.randrange(8500, 8800)/1e9))
         yield u.rx.eq(1)    # Stop bit
-        yield Delay(interval=8.68e-6)
+        yield Delay(interval=(random.randrange(8500, 8800)/1e9))
 
     import random
     def tb():
