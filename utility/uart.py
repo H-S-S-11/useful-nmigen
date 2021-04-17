@@ -67,7 +67,7 @@ class UART_RX(Elaboratable):
         # Counting bits
         with m.If(bit_count.any() & (oversample_counter == 4) & sample_strobe):
             m.d.sync += bit_count.eq(bit_count+1)
-            with m.If(bit_count==9):
+            with m.If(bit_count==10):
                 m.d.sync += bit_count.eq(0)                
         
         # Input right shift reg with vote
@@ -77,6 +77,9 @@ class UART_RX(Elaboratable):
             m.d.sync += voting.eq(Cat(voting[1], rx_sync))
         m.d.comb += vote.eq( voting.all() | (rx_sync & voting[0]) | (rx_sync & voting[1]))
         
+        with m.If(~(bit_count==10) & sample_strobe & (oversample_counter==3)):
+            m.d.sync += self.data.eq(Cat(self.data[1:8], vote))
+
         m.d.comb += self.tx.eq(rx_sync)
 
         return m
@@ -94,8 +97,10 @@ if __name__=="__main__":
         bits = bin(byte)[2:]
         while len(bits) < 8:
             bits = "0" + bits
+        yield u.rx.eq(0)    # Start bit
+        yield Delay(interval=(random.randrange(8500, 8800)/1e9))
         for n in range(0, 8):
-            yield u.rx.eq(int(bits[n]))
+            yield u.rx.eq(int(bits[7-n]))
             yield Delay(interval=(random.randrange(8500, 8800)/1e9))
         yield u.rx.eq(1)    # Stop bit
         yield Delay(interval=(random.randrange(8500, 8800)/1e9))
