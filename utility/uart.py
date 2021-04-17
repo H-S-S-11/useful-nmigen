@@ -8,6 +8,10 @@ class UART_RX(Elaboratable):
         self.rx = Signal()
         self.tx = Signal()
 
+        self.error  = Signal()
+        self.data   = Signal(8)
+        self.valid  = Signal()
+
         if(fclk==None):
             raise ValueError("Please specify fclk")
         else:
@@ -19,7 +23,7 @@ class UART_RX(Elaboratable):
         rx_sync = Signal()
         m.submodules.rx_2ff = FFSynchronizer(i=self.rx, o=rx_sync, o_domain="sync")
 
-        # Generate the sampling strobe 5 times per bit        
+        # Generate the sampling strobe 3 times per bit        
         baud_divide = Signal(range(self.divider))
         oversample_counter = Signal(3)
         sample_strobe = Signal()
@@ -35,20 +39,30 @@ class UART_RX(Elaboratable):
             ]
             with m.If(oversample_counter==5):
                 m.d.sync += oversample_counter.eq(0)
-            with m.If(~oversample_counter[2] & oversample_counter[0:2].any() & bit_count.any()):
+            with m.If(~oversample_counter[2] & oversample_counter[0:2].any() 
+                & bit_count.any()):
                 m.d.sync += sample_strobe.eq(1)
             
         # Detect start bits and changes
         rx_sync_prev = Signal()
         m.d.sync += rx_sync_prev.eq(rx_sync)
         with m.If(rx_sync_prev ^ rx_sync):
-            m.d.sync += [
-                baud_divide.eq(0),
-                oversample_counter.eq(0),
-            ]
             # Detect start bits
             with m.If(~bit_count.any() & ~rx_sync):
-                m.d.sync += bit_count.eq(1)
+                m.d.sync += [
+                    bit_count.eq(1),
+                    self.error.eq(0),
+                    self.valid.eq(0),
+                    baud_divide.eq(0),
+                    oversample_counter.eq(0),
+                ]
+            # Early changes
+            with m.Else():
+                with m.If(oversample_counter[2]):
+                    m.d.sync += [
+                        baud_divide.eq(0),
+                        oversample_counter.eq(0),
+                    ]
 
         # Counting bits
         with m.If(bit_count.any() & (oversample_counter == 4) & sample_strobe):
@@ -56,9 +70,12 @@ class UART_RX(Elaboratable):
             with m.If(bit_count==9):
                 m.d.sync += bit_count.eq(0)                
         
-        
-        # Input right shift reg
-        
+        # Input right shift reg with vote
+        voting = Signal(2)
+        vote = Signal()
+        with m.If(bit_count.any() & ~(bit_count==1) & sample_strobe):
+            m.d.sync += voting.eq(Cat(voting[1], rx_sync))
+        m.d.comb += vote.eq( voting.all() | (rx_sync & voting[0]) | (rx_sync & voting[1]))
         
         m.d.comb += self.tx.eq(rx_sync)
 
