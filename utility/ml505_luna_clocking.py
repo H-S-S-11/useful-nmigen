@@ -1,6 +1,7 @@
 from nmigen import *
 from nmigen.build import *
 from nmigen_boards.resources import *
+from nmigen.lib.cdc import *
 from nmigen_boards.ml505 import *
 
 class ML505LunaClockDomains(Elaboratable):
@@ -16,6 +17,8 @@ class ML505LunaClockDomains(Elaboratable):
         m.domains.sync      = ClockDomain()
 
         clk100 = platform.request("clk100")
+        cpu_rst  = platform.request("cpu_rst")
+        m.submodules.reset_sync = ResetSynchronizer(cpu_rst, domain="sync")
 
         # Add clocks and constraints
         clk12       = Signal()
