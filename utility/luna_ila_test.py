@@ -21,47 +21,8 @@ class USBSerialLoopback(Elaboratable):
         m = Module()
 
         if (platform != None):
-            # Create and check clocks
+            # Create clocks
             m.submodules.clocks = ML505LunaClockDomains()
-
-            led = platform.request("led", 0)
-            timer = Signal(range(int(12e6//2)), reset_less=True)
-            flop = Signal(reset_less=True)
-            m.d.comb += led.o.eq(flop)
-            with m.If(timer == 0):
-                m.d.usb += timer.eq(int( (12e6) //2) - 1)
-                m.d.usb += flop.eq(~flop)
-            with m.Else():
-                m.d.usb += timer.eq(timer - 1)
-
-        
-        """
-        # Add USB connector
-        platform.add_resources([
-            Resource("usb_gpio", 0,
-                Subsignal("d_p",    Pins("12", conn=("gpio", 0) )),
-                Subsignal("d_n",    Pins("14", conn=("gpio", 0) )),
-                Subsignal("pullup", Pins("16", conn=("gpio", 0), dir="o")),
-                Attrs(IOSTANDARD="LVCMOS33"),
-            ),
-        ])
-
-        # Instantiate the serial converter 
-        direct_usb = platform.request("usb_gpio")
-        m.submodules.usb_serial = usb_serial = \
-            USBSerialDevice(bus=direct_usb, idVendor=0x16d0, idProduct=0x0f3b)
-
-        m.d.comb += [
-            # Place the streams into a loopback configuration...
-            usb_serial.tx.payload  .eq(usb_serial.rx.payload),
-            usb_serial.tx.valid    .eq(usb_serial.rx.valid),
-            usb_serial.tx.first    .eq(usb_serial.rx.first),
-            usb_serial.tx.last     .eq(usb_serial.rx.last),
-            usb_serial.rx.ready    .eq(usb_serial.tx.ready),
-
-            # ... and always connect by default.
-            usb_serial.connect     .eq(Const(1))
-        ]"""
 
         # Sync counter to test ILA
         counter = Signal(29)
