@@ -74,7 +74,8 @@ class BROMWrapper(Elaboratable):
             bram_prim = get_xilinx_BRAM_SDP(self.address, Const(0, unsigned(32)), self.read_port, 
                 Const(0, unsigned(4)), ClockSignal(), ResetSignal(), size=self.size, init_data=self.ROM_data, pipeline_reg=self.pipeline_reg)
             m.submodules.__brom_0 = bram_prim
-        else:            
+        else:   #  Probably actually needs an extra clock cycle delay to be accurate, be careful
+            full_line = Signal(256)       
             with m.Switch(self.address):
                 for entry in range(0, len(self.ROM_data)):
                     line_string = str(hex(entry)).upper()[2:]
@@ -83,8 +84,13 @@ class BROMWrapper(Elaboratable):
                     line_string = "p_INIT_"+line_string
                     line = self.ROM_data[line_string]
                     for n in range(0, 8):
-                        with m.Case(entry*4+n):
-                            m.d.sync += self.read_port.eq((line >> 32*n) % 2**32)
+                        with m.Case(entry*8+n):
+                            m.d.sync += [
+                                self.read_port.eq((line >> 32*n) % 2**32),
+                                full_line.eq(line),
+                            ]
+                            
+                            
         
         return m
 
