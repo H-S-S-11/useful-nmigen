@@ -70,9 +70,22 @@ class BROMWrapper(Elaboratable):
         self.size = size
     def elaborate(self, platform):
         m = Module()
-        bram_prim = get_xilinx_BRAM_SDP(self.address, Const(0, unsigned(32)), self.read_port, 
-            Const(0, unsigned(4)), ClockSignal(), ResetSignal(), size=self.size, init_data=self.ROM_data, pipeline_reg=self.pipeline_reg)
-        m.submodules.__brom_0 = bram_prim
+        if (platform != None):
+            bram_prim = get_xilinx_BRAM_SDP(self.address, Const(0, unsigned(32)), self.read_port, 
+                Const(0, unsigned(4)), ClockSignal(), ResetSignal(), size=self.size, init_data=self.ROM_data, pipeline_reg=self.pipeline_reg)
+            m.submodules.__brom_0 = bram_prim
+        else:            
+            with m.Switch(self.address):
+                for entry in range(0, len(self.ROM_data)):
+                    line_string = str(hex(entry)).upper()[2:]
+                    while len(line_string) < 2:
+                        line_string = '0' + line_string
+                    line_string = "p_INIT_"+line_string
+                    line = self.ROM_data[line_string]
+                    for n in range(0, 8):
+                        with m.Case(entry*4+n):
+                            m.d.sync += self.read_port.eq((line >> 32*n) % 2**32)
+        
         return m
 
 class BRAMTest(Elaboratable):
