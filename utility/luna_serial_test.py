@@ -13,6 +13,11 @@ from luna.gateware.debug.ila import *
 
 import sys
 
+# Device Manager will show two interfaces, one has a yellow triangle
+# Use zadig to install the USB Serial (CDC) drivers for this interface.
+# Might need to swap back and forth between WinUSB and USB Serial 
+# Then can open with putty (pick the COM port with no yellow triangle)
+
 class USBSerialLoopback(Elaboratable):
     def __init__(self):
         pass
