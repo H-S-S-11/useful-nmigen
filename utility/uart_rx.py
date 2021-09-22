@@ -148,6 +148,7 @@ if __name__=="__main__":
     import random
     def tb():
         yield u.rx.eq(1)
+        yield Delay(interval=50e-5)
         yield Delay(interval=(random.randrange(7000, 11000)/1e9))
         yield from tx_byte(0x56, jitter=1000)
         yield Delay(interval=4e-5)
@@ -171,5 +172,5 @@ if __name__=="__main__":
     sim.add_sync_process(check_output)
 
     with sim.write_vcd("UART_waves.vcd"):
-        sim.run_until(1.6e-3)
+        sim.run_until(2.5e-3)
         
